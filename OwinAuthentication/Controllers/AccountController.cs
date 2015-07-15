@@ -221,6 +221,28 @@ namespace OwinAuthentication.Controllers
                 if (user == null || !(await UserManager.IsEmailConfirmedAsync(user.Id)))
                 {
                     // Don't reveal that the user does not exist or is not confirmed
+                    string code = await UserManager.GeneratePasswordResetTokenAsync(user.Id);
+                    var callbackUrl = Url.Action("ResetPassword", "Account", new { userId = user.Id, code = code }, protocol: Request.Url.Scheme);
+                    string subject = "Zanicura Reset Password Link";
+                    string path = Server.MapPath("/EmailTemplate/ForgetPassword.html");
+                    string finalTemplate = System.IO.File.ReadAllText(path);
+                    finalTemplate = finalTemplate.Replace("${Email}$", model.Email).Replace("$CallBack$", callbackUrl);
+
+                    //if mail is successfully sent than redirect to forgot password confirmation page
+                    if (Common.SendEmail(model.Email, subject, finalTemplate))
+                    {
+                        return RedirectToAction("ForgotPasswordConfirmation", "Account");
+                    }
+
+                    else
+                    {
+                        ViewBag.Error = "There is some server issue so can't do forget password at this time please try after some time.";
+                        // ViewBag.Error = MessageResourceConstants.SendEmailFailure;
+                        return View("ForgotPassword");
+                    }
+
+                    // Don't reveal that the user does not exist or is not confirmed
+                    return View(model);
                     return View("ForgotPasswordConfirmation");
                 }
 
